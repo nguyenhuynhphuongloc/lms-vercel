@@ -299,85 +299,18 @@ export async function transcribeAudio(formData: FormData, provider: AIProvider =
     }
   }
 
-  // Nhánh VietAPI: hoàn toàn không gọi Groq, chỉ thử gửi audio trực tiếp qua VietAPI (nếu trình duyệt không dùng Web Speech)
-  if (provider === 'vietapi') {
-    const vietApiKey = getVietApiKey()
-    if (!vietApiKey) {
-      return { error: 'Thiếu apikey_vietchatbot trong file .env' }
-    }
-
-    const customBaseUrl = process.env.VIETAPI_BASE_URL?.trim().replace(/\/+$/, '')
-    const baseUrl = customBaseUrl || 'https://api.vietapi.tech/v1'
-    const baseClean = baseUrl.replace(/\/chat\/completions$/, '').replace(/\/audio\/transcriptions$/, '')
-
-    // Thử gửi audio qua multimodal /chat/completions (input_audio) trên VietAPI
-    try {
-      const arrayBuffer = await audioFile.arrayBuffer()
-      const base64Audio = Buffer.from(arrayBuffer).toString('base64')
-      const format = safeName.endsWith('.wav') ? 'wav' : safeName.endsWith('.mp3') ? 'mp3' : 'webm'
-      const customModel = process.env.VIETAPI_MODEL?.trim()
-      const audioModels = customModel
-        ? [customModel]
-        : ['gemini-2.5-flash', 'gemini-2.0-flash', 'gpt-4o-audio-preview']
-
-      for (const model of audioModels) {
-        const res = await fetch(`${baseClean}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${vietApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  {
-                    type: 'text',
-                    text: 'Transcribe the exact spoken English words from this audio. Return ONLY the transcribed text, no quotes or explanation.',
-                  },
-                  {
-                    type: 'input_audio',
-                    input_audio: { data: base64Audio, format },
-                  },
-                ],
-              },
-            ],
-            max_tokens: 200,
-            temperature: 0.1,
-          }),
-        })
-        if (res.ok) {
-          const data = await res.json()
-          const text = data.choices?.[0]?.message?.content?.trim() || ''
-          if (text) return { text }
-        } else {
-          const errText = await res.text().catch(() => '')
-          console.error(`[transcribeAudio VietAPI multimodal ${model}] HTTP ${res.status}:`, errText)
-        }
-      }
-    } catch (err) {
-      console.error('[transcribeAudio VietAPI multimodal] error:', err)
-    }
-
-    return {
-      error:
-        'Gói VietAPI hiện không hỗ trợ nhận diện file audio trực tiếp. Mi hãy dùng trình duyệt Chrome hoặc Edge để nhận diện giọng nói trực tiếp nhé!',
-    }
-  }
-
-  // Mặc định (provider === 'groq'): dùng Groq Whisper
+  // Dùng Groq Whisper (chính xác nhất cho phân tích file audio thành text tiếng Anh)
   const groqApiKey = process.env.GROQ_API_KEY?.trim()
   let lastGroqError = ''
 
   if (groqApiKey) {
-    for (const whisperModel of ['whisper-large-v3-turbo', 'whisper-large-v3']) {
+    for (const whisperModel of ['whisper-large-v3', 'whisper-large-v3-turbo']) {
       const groqFormData = new FormData()
       groqFormData.append('file', audioFile, safeName)
       groqFormData.append('model', whisperModel)
       groqFormData.append('response_format', 'json')
       groqFormData.append('language', 'en')
+      groqFormData.append('temperature', '0')
 
       try {
         const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
@@ -409,10 +342,10 @@ export async function transcribeAudio(formData: FormData, provider: AIProvider =
   }
 
   if (!groqApiKey) {
-    return { error: 'Thiếu GROQ_API_KEY trong file .env' }
+    return { error: 'Thiếu GROQ_API_KEY trong file .env để phân tích audio.' }
   }
   return {
-    error: `Lỗi khi nhận diện giọng nói (${lastGroqError || 'không rõ nguyên nhân'}). Hãy kiểm tra lại micro hoặc key API.`,
+    error: `Lỗi khi AI phân tích giọng nói (${lastGroqError || 'không rõ nguyên nhân'}). Nếu báo HTTP 403 bị block, hãy bật lại whisper-large-v3-turbo tại console.groq.com/settings/project/limits.`,
   }
 }
 
@@ -544,7 +477,7 @@ For "completedTaskIndexes", include the 0-based index of any mission tasks that 
   let lastStatus = 0
   let lastErrBody = ''
 
-  for (const groqModel of ['openai/gpt-oss-20b', 'openai/gpt-oss-120b']) {
+  for (const groqModel of ['openai/gpt-oss-120b', 'openai/gpt-oss-20b']) {
     try {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 20000)

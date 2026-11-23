@@ -453,7 +453,7 @@ export default function PronunciationChecker() {
                     disabled={isAnalyzing}
                     className={`w-20 h-20 rounded-full flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                       isRecording
-                        ? 'bg-red-600 border-4 border-red-300 text-white shadow-[0_0_30px_rgba(220,38,38,0.45)] scale-105 animate-pulse'
+                        ? 'bg-red-600 border-4 border-red-300 text-white shadow-[0_0_30px_rgba(220,38,38,0.45)] scale-105'
                         : 'bg-gradient-to-br from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-lg shadow-red-500/25 hover:scale-105'
                     }`}
                     title={isRecording ? 'Dừng và chấm điểm' : 'Bắt đầu thu âm'}
@@ -471,7 +471,7 @@ export default function PronunciationChecker() {
                         Đang thu âm... 00:{String(recordSeconds).padStart(2, '0')}
                       </p>
                       <p className="text-xs text-gray-600">
-                        Đọc to từ <span className="text-gray-900 font-semibold">&ldquo;{targetText}&rdquo;</span> rồi nhấn nút vuông để AI chấm điểm
+                        Đọc to từ <span className="text-gray-900 font-semibold">&ldquo;{targetText}&rdquo;</span> rồi nhấn nút vuông để AI phân tích audio
                       </p>
                     </div>
                   ) : isAnalyzing ? (

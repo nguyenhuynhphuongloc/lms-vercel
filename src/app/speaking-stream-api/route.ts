@@ -137,7 +137,7 @@ Rules for the JSON:
         return Response.json({ error: 'Thiếu GROQ_API_KEY trong file .env.' }, { status: 500 })
       }
 
-      for (const model of ['openai/gpt-oss-20b', 'openai/gpt-oss-120b']) {
+      for (const model of ['openai/gpt-oss-120b', 'openai/gpt-oss-20b']) {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: {

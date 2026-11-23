@@ -66,6 +66,12 @@ export async function checkPronunciation(formData: FormData): Promise<Pronunciat
   const apiKey = process.env.GROQ_API_KEY
   const targetText = String(formData.get('targetText') || '').trim()
   const audioFile = formData.get('audio') as Blob | null
+  const browserSpokenText = String(formData.get('browserSpokenText') || '').trim()
+  const browserConfidenceRaw = formData.get('browserConfidence')
+  const browserConfidence =
+    browserConfidenceRaw !== null && browserConfidenceRaw !== ''
+      ? Math.max(0, Math.min(1, Number(browserConfidenceRaw)))
+      : null
 
   const emptyError = (msg: string): PronunciationResult => ({
     accuracy: 0,
@@ -84,62 +90,82 @@ export async function checkPronunciation(formData: FormData): Promise<Pronunciat
 
   if (!apiKey) return emptyError('Thiếu GROQ_API_KEY trong file .env.')
   if (!targetText) return emptyError('Vui lòng nhập hoặc chọn từ vựng cần kiểm tra.')
-  if (!audioFile || audioFile.size === 0) return emptyError('Không tìm thấy dữ liệu âm thanh.')
-
-  // Bước 1: Gửi audio lên Groq Whisper với verbose_json để lấy transcript + tín hiệu âm học
-  const groqFormData = new FormData()
-  const supportedExts = ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'opus', 'wav', 'webm']
-  const rawName = typeof (audioFile as File).name === 'string' ? (audioFile as File).name : ''
-  const rawExt = rawName.includes('.') ? rawName.split('.').pop()?.toLowerCase() || '' : ''
-
-  let safeFileName = rawName
-  if (!supportedExts.includes(rawExt)) {
-    const mime = (audioFile.type || '').toLowerCase()
-    let ext = 'webm'
-    if (mime.includes('mpeg') || mime.includes('mp3')) ext = 'mp3'
-    else if (mime.includes('wav')) ext = 'wav'
-    else if (mime.includes('m4a') || mime.includes('mp4')) ext = 'm4a'
-    else if (mime.includes('ogg')) ext = 'ogg'
-    else if (mime.includes('opus')) ext = 'opus'
-    else if (mime.includes('flac')) ext = 'flac'
-    safeFileName = `recording.${ext}`
+  if (!browserSpokenText && (!audioFile || audioFile.size === 0)) {
+    return emptyError('Không tìm thấy dữ liệu giọng nói hoặc âm thanh.')
   }
 
-  groqFormData.append('file', audioFile, safeFileName)
-  groqFormData.append('model', 'whisper-large-v3-turbo')
-  groqFormData.append('response_format', 'verbose_json')
-  groqFormData.append('language', 'en')
-
-  let spokenText = ''
+  let spokenText = browserSpokenText
   let avgLogprob = -0.3
   let noSpeechProb = 0
+  let acousticClarityOverride: number | null = null
 
-  try {
-    const whisperRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: groqFormData,
-    })
+  if (browserSpokenText) {
+    // Dùng thẳng kết quả từ Web Speech API của trình duyệt (miễn phí, 0ms upload, không cần Whisper!)
+    acousticClarityOverride =
+      browserConfidence !== null && browserConfidence > 0
+        ? Math.round(browserConfidence * 100)
+        : 85
+  } else if (audioFile) {
+    // Fallback / Tab tải file Audio: gửi lên Groq Whisper
+    const groqFormData = new FormData()
+    const supportedExts = ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'opus', 'wav', 'webm']
+    const rawName = typeof (audioFile as File).name === 'string' ? (audioFile as File).name : ''
+    const rawExt = rawName.includes('.') ? rawName.split('.').pop()?.toLowerCase() || '' : ''
 
-    if (!whisperRes.ok) {
-      const errText = await whisperRes.text().catch(() => '')
-      console.error(`[checkPronunciation] Whisper HTTP ${whisperRes.status}:`, errText)
-      return emptyError(`Lỗi nhận diện âm thanh (HTTP ${whisperRes.status}). Hãy thử file audio khác hoặc thu lại.`)
+    let safeFileName = rawName
+    if (!supportedExts.includes(rawExt)) {
+      const mime = (audioFile.type || '').toLowerCase()
+      let ext = 'webm'
+      if (mime.includes('mpeg') || mime.includes('mp3')) ext = 'mp3'
+      else if (mime.includes('wav')) ext = 'wav'
+      else if (mime.includes('m4a') || mime.includes('mp4')) ext = 'm4a'
+      else if (mime.includes('ogg')) ext = 'ogg'
+      else if (mime.includes('opus')) ext = 'opus'
+      else if (mime.includes('flac')) ext = 'flac'
+      safeFileName = `recording.${ext}`
     }
 
-    const whisperData = await whisperRes.json()
-    spokenText = String(whisperData.text || '').trim()
+    groqFormData.append('file', audioFile, safeFileName)
+    groqFormData.append('model', 'whisper-large-v3')
+    groqFormData.append('response_format', 'verbose_json')
+    groqFormData.append('language', 'en')
+    groqFormData.append('temperature', '0')
 
-    if (Array.isArray(whisperData.segments) && whisperData.segments.length > 0) {
-      const segs = whisperData.segments
-      const sumLogprob = segs.reduce((acc: number, s: any) => acc + (typeof s.avg_logprob === 'number' ? s.avg_logprob : -0.3), 0)
-      const sumNoSpeech = segs.reduce((acc: number, s: any) => acc + (typeof s.no_speech_prob === 'number' ? s.no_speech_prob : 0), 0)
-      avgLogprob = sumLogprob / segs.length
-      noSpeechProb = sumNoSpeech / segs.length
+    try {
+      const whisperRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: groqFormData,
+      })
+
+      if (!whisperRes.ok) {
+        const errText = await whisperRes.text().catch(() => '')
+        console.error(`[checkPronunciation] Whisper HTTP ${whisperRes.status}:`, errText)
+        return emptyError(
+          `Lỗi nhận diện âm thanh (HTTP ${whisperRes.status}). Hãy chuyển sang tab Thu âm trực tiếp (Web Speech API miễn phí) hoặc bật lại Whisper trên Groq.`,
+        )
+      }
+
+      const whisperData = await whisperRes.json()
+      spokenText = String(whisperData.text || '').trim()
+
+      if (Array.isArray(whisperData.segments) && whisperData.segments.length > 0) {
+        const segs = whisperData.segments
+        const sumLogprob = segs.reduce(
+          (acc: number, s: any) => acc + (typeof s.avg_logprob === 'number' ? s.avg_logprob : -0.3),
+          0,
+        )
+        const sumNoSpeech = segs.reduce(
+          (acc: number, s: any) => acc + (typeof s.no_speech_prob === 'number' ? s.no_speech_prob : 0),
+          0,
+        )
+        avgLogprob = sumLogprob / segs.length
+        noSpeechProb = sumNoSpeech / segs.length
+      }
+    } catch (err) {
+      console.error('[checkPronunciation] Whisper error:', err)
+      return emptyError('Lỗi kết nối khi phân tích file âm thanh.')
     }
-  } catch (err) {
-    console.error('[checkPronunciation] Whisper error:', err)
-    return emptyError('Lỗi kết nối khi phân tích file âm thanh.')
   }
 
   // Trường hợp không có giọng nói trong audio
@@ -170,7 +196,10 @@ export async function checkPronunciation(formData: FormData): Promise<Pronunciat
 
   // Tính chỉ số âm học bổ trợ để AI đánh giá thực tế hơn
   // avgLogprob càng gần 0 càng rõ (thường -0.05 là rất rõ, -0.5 là khá ổn, -1.2 là mờ/lệch âm)
-  const acousticClarity = Math.max(0, Math.min(100, Math.round(Math.exp(avgLogprob) * 100)))
+  const acousticClarity =
+    acousticClarityOverride !== null
+      ? acousticClarityOverride
+      : Math.max(0, Math.min(100, Math.round(Math.exp(avgLogprob) * 100)))
   const textSimilarity = computeTextSimilarity(targetText, spokenText)
 
   // Bước 2: Gửi kết quả âm học + transcript cho AI chuyên gia ngữ âm đánh giá % và hướng dẫn chi tiết

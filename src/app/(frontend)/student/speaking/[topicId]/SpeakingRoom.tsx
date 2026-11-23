@@ -52,7 +52,6 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
     },
   ])
   const [isRecording, setIsRecording] = useState(false)
-  const [liveTranscript, setLiveTranscript] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -83,9 +82,6 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
-  const speechRecognitionRef = useRef<any>(null)
-  const speechTranscriptRef = useRef<string>('')
-  const speechStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isSubmittingRef = useRef<boolean>(false)
   const chatEndRef = useRef<HTMLDivElement | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -194,32 +190,11 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
     [stopSpeaking],
   )
 
-  const cleanupSpeechRecognition = useCallback(() => {
-    if (speechStopTimerRef.current) {
-      clearTimeout(speechStopTimerRef.current)
-      speechStopTimerRef.current = null
-    }
-    const rec = speechRecognitionRef.current
-    if (rec) {
-      rec.onstart = null
-      rec.onresult = null
-      rec.onerror = null
-      rec.onend = null
-      try {
-        rec.abort()
-      } catch {
-        // ignore
-      }
-      speechRecognitionRef.current = null
-    }
-  }, [])
-
   useEffect(() => {
     return () => {
-      cleanupSpeechRecognition()
       stopSpeaking()
     }
-  }, [cleanupSpeechRecognition, stopSpeaking])
+  }, [stopSpeaking])
 
   const sendUserTextToAI = useCallback(
     async (rawText: string) => {
@@ -423,107 +398,8 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
 
   const startRecording = useCallback(async () => {
     if (isProcessing || isSubmittingRef.current) return
-    const wasSpeaking = isSpeaking
     stopSpeaking()
-    cleanupSpeechRecognition()
     setError(null)
-
-    // Ưu tiên Web Speech Recognition của trình duyệt cho tất cả chủ đề (miễn phí, hiện chữ tức thì, không bị lỗi 403 Groq Whisper)
-    const SpeechRecognitionAPI =
-      typeof window !== 'undefined'
-        ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-        : null
-
-    if (SpeechRecognitionAPI) {
-      // Trên Chrome Windows, chờ 120ms sau khi tắt TTS để audio device được giải phóng hoàn toàn
-      if (wasSpeaking) {
-        await new Promise((resolve) => setTimeout(resolve, 120))
-      }
-
-      try {
-        const recognition = new SpeechRecognitionAPI()
-        recognition.lang = 'en-US'
-        recognition.continuous = true
-        recognition.interimResults = true
-
-        speechTranscriptRef.current = ''
-        setLiveTranscript('')
-        let hasFinished = false
-
-        const finalizeSpeech = async () => {
-          if (hasFinished) return
-          hasFinished = true
-
-          if (speechStopTimerRef.current) {
-            clearTimeout(speechStopTimerRef.current)
-            speechStopTimerRef.current = null
-          }
-
-          recognition.onstart = null
-          recognition.onresult = null
-          recognition.onerror = null
-          recognition.onend = null
-          if (speechRecognitionRef.current === recognition) {
-            speechRecognitionRef.current = null
-          }
-          try {
-            recognition.abort()
-          } catch {
-            // ignore
-          }
-
-          setIsRecording(false)
-          const spoken = speechTranscriptRef.current.trim()
-          speechTranscriptRef.current = ''
-          setLiveTranscript('')
-          if (spoken) {
-            await sendUserTextToAI(spoken)
-          }
-        }
-
-        recognition.onresult = (event: any) => {
-          let finalText = ''
-          let interimText = ''
-          for (let i = 0; i < event.results.length; i++) {
-            const part = event.results[i][0]?.transcript || ''
-            if (event.results[i].isFinal) {
-              finalText += part + ' '
-            } else {
-              interimText += part
-            }
-          }
-          const combined = `${finalText}${interimText}`.trim()
-          speechTranscriptRef.current = combined
-          setLiveTranscript(combined)
-        }
-
-        recognition.onerror = (event: any) => {
-          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-            setError('Không thể truy cập Microphone. Vui lòng cấp quyền trong trình duyệt.')
-          } else if (event.error === 'audio-capture') {
-            setError('Micro đang bị bận hoặc chưa kết nối. Mi hãy bấm lại nút micro nhé.')
-          } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-            setError(`Lỗi nhận diện giọng nói trình duyệt (${event.error}). Hãy thử lại.`)
-          }
-          finalizeSpeech()
-        }
-
-        recognition.onend = () => {
-          finalizeSpeech()
-        }
-
-        speechRecognitionRef.current = recognition
-        ;(recognition as any).__finalize = finalizeSpeech
-        recognition.start()
-        setIsRecording(true)
-        return
-      } catch (err) {
-        console.error('[startRecording SpeechRecognition] error:', err)
-        cleanupSpeechRecognition()
-        setError('Không thể khởi động nhận diện giọng nói. Mi hãy nhấn lại nút micro nhé.')
-        return
-      }
-    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -537,7 +413,9 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
 
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop())
-        const blob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' })
+        const blob = new Blob(audioChunksRef.current, {
+          type: mediaRecorder.mimeType || 'audio/webm',
+        })
         await processAudio(blob)
       }
 
@@ -547,43 +425,14 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
     } catch {
       setError('Không thể truy cập Microphone. Vui lòng cấp quyền trong trình duyệt.')
     }
-  }, [
-    isProcessing,
-    isSpeaking,
-    stopSpeaking,
-    cleanupSpeechRecognition,
-    topic.provider,
-    processAudio,
-    sendUserTextToAI,
-  ])
+  }, [isProcessing, stopSpeaking, processAudio])
 
   const stopRecording = useCallback(() => {
-    const rec = speechRecognitionRef.current
-    if (rec) {
-      setIsRecording(false)
-      try {
-        rec.stop()
-      } catch {
-        // ignore
-      }
-      // Safety fallback: nếu Chrome không bắn onend sau 600ms thì chủ động kết thúc & nhả micro ngay
-      if (speechStopTimerRef.current) {
-        clearTimeout(speechStopTimerRef.current)
-      }
-      speechStopTimerRef.current = setTimeout(() => {
-        if (typeof rec.__finalize === 'function') {
-          rec.__finalize()
-        } else {
-          cleanupSpeechRecognition()
-        }
-      }, 600)
-      return
-    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop()
       setIsRecording(false)
     }
-  }, [cleanupSpeechRecognition])
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -885,12 +734,12 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
                 <div
                   className={`rounded-full px-5 py-2.5 text-sm border transition ${
                     isRecording
-                      ? 'border-red-400 bg-red-50 text-red-600 font-medium animate-pulse'
+                      ? 'border-red-400 bg-red-50 text-red-600 font-medium'
                       : 'border-gray-300 text-gray-500 bg-white'
                   }`}
                 >
                   {isRecording
-                    ? liveTranscript || 'Đang lắng nghe giọng nói của mi...'
+                    ? 'Đang lắng nghe giọng nói của mi...'
                     : 'Hãy trả lời câu hỏi'}
                 </div>
 
@@ -945,7 +794,7 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
                   disabled={isProcessing}
                   className={`w-14 h-14 rounded-full flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                     isRecording
-                      ? 'bg-red-600 border-2 border-red-400 text-white shadow-[0_0_24px_rgba(220,38,38,0.45)] scale-105 animate-pulse'
+                      ? 'bg-red-600 border-2 border-red-400 text-white shadow-[0_0_24px_rgba(220,38,38,0.45)] scale-105'
                       : 'bg-white border border-gray-300 text-gray-700 shadow-sm hover:border-red-500 hover:bg-red-50 hover:text-red-600'
                   }`}
                   title={isRecording ? 'Dừng thu âm' : 'Bắt đầu thu âm'}
