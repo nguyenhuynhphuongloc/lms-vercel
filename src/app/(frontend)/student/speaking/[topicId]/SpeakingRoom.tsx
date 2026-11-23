@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronUp,
   Eye,
-  EyeOff,
   Flame,
   HelpCircle,
   Languages,
@@ -16,9 +15,7 @@ import {
   Mic,
   RefreshCw,
   Square,
-  ThumbsDown,
   Trophy,
-  User,
   Volume2,
   X,
 } from 'lucide-react'
@@ -253,7 +250,7 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
           id: userMsgId,
           role: 'user',
           content: userText,
-          showCorrection: true,
+          showCorrection: false,
         },
       ])
 
@@ -431,13 +428,13 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
     cleanupSpeechRecognition()
     setError(null)
 
-    // Với chủ đề VietAPI: ưu tiên Web Speech Recognition của trình duyệt (miễn phí, không cần Groq Whisper)
+    // Ưu tiên Web Speech Recognition của trình duyệt cho tất cả chủ đề (miễn phí, hiện chữ tức thì, không bị lỗi 403 Groq Whisper)
     const SpeechRecognitionAPI =
       typeof window !== 'undefined'
         ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
         : null
 
-    if (topic.provider === 'vietapi' && SpeechRecognitionAPI) {
+    if (SpeechRecognitionAPI) {
       // Trên Chrome Windows, chờ 120ms sau khi tắt TTS để audio device được giải phóng hoàn toàn
       if (wasSpeaking) {
         await new Promise((resolve) => setTimeout(resolve, 120))
@@ -702,14 +699,6 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
                 </h1>
               </div>
             </div>
-
-            <button
-              onClick={handleCompleteAndFeedback}
-              className="shrink-0 flex items-center gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-semibold text-xs md:text-sm px-4 md:px-5 py-2 rounded-full shadow-md shadow-red-500/20 transition active:scale-95"
-            >
-              <Check className="w-4 h-4 stroke-[2.5]" />
-              <span>Hoàn tất &amp; Xem nhận xét</span>
-            </button>
           </div>
 
           {/* Vùng tin nhắn */}
@@ -730,32 +719,25 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
                         alt="Avatar"
                         className="w-10 h-10 rounded-full object-cover border-2 border-red-200 shadow-sm"
                       />
-                      <button
-                        onClick={() => speak(msg.content, msg.id)}
-                        className="text-gray-400 hover:text-gray-600 transition p-1"
-                        title="Báo cáo / Nghe lại"
-                      >
-                        <ThumbsDown className="w-3.5 h-3.5" />
-                      </button>
                     </div>
 
-                    {/* Bong bóng AI */}
-                    <div className="w-full bg-gray-50 border border-gray-200 rounded-2xl rounded-tl-sm px-5 py-3.5 shadow-sm">
+                    {/* Bong bóng AI - nền xanh dương chữ trắng */}
+                    <div className="w-full bg-gradient-to-r from-blue-600 to-blue-500 border border-blue-500/30 rounded-2xl rounded-tl-sm px-5 py-3.5 shadow-md shadow-blue-500/20">
                       {streamingMsgId === msg.id && !msg.content ? (
                         <div className="flex items-center gap-1.5 py-1">
-                          <span className="w-2 h-2 bg-red-500 rounded-full animate-bounce [animation-delay:0ms]" />
-                          <span className="w-2 h-2 bg-red-400 rounded-full animate-bounce [animation-delay:150ms]" />
-                          <span className="w-2 h-2 bg-rose-400 rounded-full animate-bounce [animation-delay:300ms]" />
+                          <span className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:0ms]" />
+                          <span className="w-2 h-2 bg-blue-100 rounded-full animate-bounce [animation-delay:150ms]" />
+                          <span className="w-2 h-2 bg-blue-200 rounded-full animate-bounce [animation-delay:300ms]" />
                         </div>
                       ) : (
                         <p
-                          className={`text-[15px] leading-relaxed text-gray-800 transition-all ${
+                          className={`text-[15.5px] leading-relaxed text-white font-normal tracking-[0.005em] transition-all ${
                             !isVisible ? 'blur-md select-none opacity-40' : ''
                           }`}
                         >
                           {msg.content}
                           {streamingMsgId === msg.id && (
-                            <span className="inline-block w-1.5 h-4 ml-1 align-middle bg-red-500 animate-pulse rounded-sm" />
+                            <span className="inline-block w-1.5 h-4 ml-1 align-middle bg-white animate-pulse rounded-sm" />
                           )}
                         </p>
                       )}
@@ -763,26 +745,26 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
                       {!isVisible && streamingMsgId !== msg.id && (
                         <button
                           onClick={() => toggleMessageVisibility(msg.id, isVisible)}
-                          className="mt-1 text-xs text-red-600 hover:text-red-500 underline"
+                          className="mt-1 text-xs text-blue-100 hover:text-white underline"
                         >
                           Nhấn biểu tượng mắt để hiện nội dung
                         </button>
                       )}
 
                       {msg.isTranslating && (
-                        <p className="mt-2.5 pt-2.5 border-t border-gray-200 text-xs text-gray-500 italic">
+                        <p className="mt-2.5 pt-2.5 border-t border-white/20 text-xs text-blue-100 italic">
                           Đang dịch sang tiếng Việt...
                         </p>
                       )}
 
                       {msg.translation && (
-                        <p className="mt-2.5 pt-2.5 border-t border-gray-200 text-sm text-red-700 leading-relaxed">
+                        <p className="mt-2.5 pt-2.5 border-t border-white/20 text-sm text-blue-50 leading-relaxed">
                           {msg.translation}
                         </p>
                       )}
                     </div>
 
-                    {/* 3 nút action nhỏ bên dưới phải bong bóng AI: Loa - Mắt - Dịch */}
+                    {/* 2 nút action nhỏ bên dưới phải bong bóng AI: Loa - Dịch */}
                     <div className="flex items-center justify-end gap-1.5 w-full mt-2 pr-1">
                       <button
                         onClick={() =>
@@ -798,18 +780,6 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
                         title="Nghe giọng đọc"
                       >
                         <Volume2 className="w-3.5 h-3.5" />
-                      </button>
-
-                      <button
-                        onClick={() => toggleMessageVisibility(msg.id, isVisible)}
-                        className={`w-7 h-7 rounded-full border flex items-center justify-center transition ${
-                          !isVisible
-                            ? 'bg-red-50 border-red-300 text-red-600'
-                            : 'bg-white border-gray-200 text-gray-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600'
-                        }`}
-                        title={isVisible ? 'Ẩn văn bản' : 'Hiện văn bản'}
-                      >
-                        {isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                       </button>
 
                       <button
@@ -831,6 +801,14 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
               // Tin nhắn User (bên phải - tông màu Đỏ)
               return (
                 <div key={msg.id} className="flex flex-col items-end">
+                  {/* Avatar phía người dùng (đối xứng với AI) */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <img
+                      src="/images/user-avatar.jpg"
+                      alt="User Avatar"
+                      className="w-10 h-10 rounded-full object-cover border-2 border-red-200 shadow-sm"
+                    />
+                  </div>
                   <div className="max-w-[85%] md:max-w-[70%] bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-2xl rounded-tr-sm px-5 py-3 shadow-md shadow-red-500/20">
                     <p className="text-[15px] leading-relaxed font-medium">{msg.content}</p>
                   </div>
@@ -849,23 +827,19 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
                       <Volume2 className="w-3.5 h-3.5" />
                     </button>
 
-                    {msg.correction && (
+                    {showCorrections && msg.correction && (
                       <button
                         onClick={() => toggleUserCorrection(msg.id)}
                         className={`w-7 h-7 rounded-full border flex items-center justify-center transition ${
-                          msg.showCorrection && showCorrections
-                            ? 'bg-amber-50 border-amber-300 text-amber-600'
+                          msg.showCorrection
+                            ? 'bg-amber-50 border-amber-400 text-amber-600'
                             : 'bg-white border-gray-200 text-amber-500 hover:border-amber-300 hover:bg-amber-50'
                         }`}
-                        title="Xem phần sửa bài"
+                        title={msg.showCorrection ? 'Ẩn gợi ý sửa bài' : 'Xem gợi ý sửa bài'}
                       >
                         <Flame className="w-3.5 h-3.5" />
                       </button>
                     )}
-
-                    <span className="text-gray-400 p-1">
-                      <ThumbsDown className="w-3.5 h-3.5" />
-                    </span>
                   </div>
 
                   {/* Box sửa bài nếu bật */}
@@ -890,17 +864,24 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
                   alt="Avatar"
                   className="w-10 h-10 rounded-full object-cover border-2 border-red-300 shadow-sm mb-2 animate-pulse"
                 />
-                <div className="bg-gray-50 border border-gray-200 rounded-2xl rounded-tl-sm px-5 py-3.5 flex items-center gap-1.5">
-                  <span className="w-2 h-2 bg-red-500 rounded-full animate-bounce [animation-delay:0ms]" />
-                  <span className="w-2 h-2 bg-red-400 rounded-full animate-bounce [animation-delay:150ms]" />
-                  <span className="w-2 h-2 bg-rose-400 rounded-full animate-bounce [animation-delay:300ms]" />
+                <div className="bg-gradient-to-r from-blue-600 to-blue-500 border border-blue-500/30 rounded-2xl rounded-tl-sm px-5 py-3.5 flex items-center gap-1.5 shadow-md shadow-blue-500/20">
+                  <span className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:0ms]" />
+                  <span className="w-2 h-2 bg-blue-100 rounded-full animate-bounce [animation-delay:150ms]" />
+                  <span className="w-2 h-2 bg-blue-200 rounded-full animate-bounce [animation-delay:300ms]" />
                 </div>
               </div>
             )}
 
-            {/* Khung "Câu trả lời của bạn" ở cuối bên phải */}
+            {/* Khung chờ "Hãy trả lời câu hỏi" kèm avatar người dùng ở cuối bên phải */}
             {!isProcessing && (
               <div className="flex flex-col items-end pt-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <img
+                    src="/images/user-avatar.jpg"
+                    alt="User Avatar"
+                    className="w-10 h-10 rounded-full object-cover border-2 border-red-200 shadow-sm"
+                  />
+                </div>
                 <div
                   className={`rounded-full px-5 py-2.5 text-sm border transition ${
                     isRecording
@@ -910,7 +891,7 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
                 >
                   {isRecording
                     ? liveTranscript || 'Đang lắng nghe giọng nói của mi...'
-                    : 'Câu trả lời của mi'}
+                    : 'Hãy trả lời câu hỏi'}
                 </div>
 
                 {/* Gợi ý trả lời khi bật "Hiện gợi ý" */}
@@ -1017,7 +998,7 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
 
             {showTaskHelp && (
               <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-2.5 mb-3">
-                Hoàn thành các mục tiêu giao tiếp dưới đây khi trò chuyện với AI. Hệ thống sẽ tự động đánh dấu hoặc mi có thể tự nhấn để theo dõi.
+                Hoàn thành các mục tiêu giao tiếp dưới đây khi trò chuyện với AI. Hệ thống AI sẽ tự động đánh dấu khi mi trả lời đạt yêu cầu.
               </p>
             )}
 
@@ -1025,16 +1006,12 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
               {topic.tasks.map((task, idx) => {
                 const done = completedTasks[idx]
                 return (
-                  <button
+                  <div
                     key={idx}
-                    type="button"
-                    onClick={() =>
-                      setCompletedTasks((prev) => prev.map((v, i) => (i === idx ? !v : v)))
-                    }
-                    className={`w-full text-left flex items-center gap-3 px-3.5 py-3 rounded-xl border transition ${
+                    className={`w-full text-left flex items-center gap-3 px-3.5 py-3 rounded-xl border select-none transition ${
                       done
                         ? 'bg-red-50 border-red-200 text-gray-500'
-                        : 'bg-gray-50 border-gray-200 hover:border-red-300 text-gray-800'
+                        : 'bg-gray-50 border-gray-200 text-gray-800'
                     }`}
                   >
                     <span
@@ -1049,7 +1026,7 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
                     <span className={`text-sm ${done ? 'line-through text-gray-400' : ''}`}>
                       {task}
                     </span>
-                  </button>
+                  </div>
                 )
               })}
             </div>
@@ -1094,9 +1071,11 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
             {/* Vai trò */}
             <div className="mt-4 pt-3.5 border-t border-gray-200 space-y-2.5">
               <div className="flex items-center gap-2.5 text-sm text-gray-700">
-                <span className="w-6 h-6 rounded-full bg-red-50 text-red-600 border border-red-200 flex items-center justify-center shrink-0">
-                  <User className="w-3.5 h-3.5" />
-                </span>
+                <img
+                  src="/images/user-avatar.jpg"
+                  alt="User Avatar"
+                  className="w-6 h-6 rounded-full object-cover border border-red-200 shrink-0"
+                />
                 <span>{topic.userRoleVi}</span>
               </div>
               <div className="flex items-center gap-2.5 text-sm text-gray-700">

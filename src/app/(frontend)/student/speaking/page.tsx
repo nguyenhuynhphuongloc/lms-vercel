@@ -49,21 +49,13 @@ export default function SpeakingIndexPage() {
           {filteredTopics.map((topic) => (
             <Link key={topic.id} href={`/student/speaking/${topic.id}`}>
               <div className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-red-400 hover:shadow-lg hover:shadow-red-500/5 transition-all cursor-pointer group h-full flex flex-col shadow-sm">
-                {/* Top row */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-xl">
-                      {topic.icon}
-                    </div>
-                    <span className="text-xs font-medium text-red-600">Speaking</span>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-red-600 group-hover:translate-x-0.5 transition-all" />
-                </div>
-
                 {/* Title */}
-                <h2 className="font-bold text-gray-900 text-base group-hover:text-red-600 transition-colors">
-                  {topic.titleVi}
-                </h2>
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="font-bold text-gray-900 text-base group-hover:text-red-600 transition-colors">
+                    {topic.titleVi}
+                  </h2>
+                  <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-red-600 group-hover:translate-x-0.5 transition-all shrink-0 mt-1" />
+                </div>
                 <p className="text-xs text-gray-400 mb-2.5">{topic.title}</p>
 
                 {/* Description */}

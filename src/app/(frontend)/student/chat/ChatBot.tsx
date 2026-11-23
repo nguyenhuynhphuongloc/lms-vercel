@@ -265,10 +265,15 @@ export default function ChatBot() {
 
                 if (msg.role === 'user') {
                   return (
-                    <div key={msg.id} className="flex justify-end">
+                    <div key={msg.id} className="flex items-start justify-end gap-2.5">
                       <div className="max-w-[85%] md:max-w-[75%] bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm md:text-[15px] leading-relaxed whitespace-pre-wrap shadow-sm">
                         {msg.content}
                       </div>
+                      <img
+                        src="/images/user-avatar.jpg"
+                        alt="User"
+                        className="w-8 h-8 rounded-full object-cover border border-red-200 shrink-0 mt-0.5"
+                      />
                     </div>
                   )
                 }
@@ -283,19 +288,19 @@ export default function ChatBot() {
                       }`}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="bg-gray-50 border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 text-sm md:text-[15px] text-gray-800 leading-relaxed whitespace-pre-wrap">
+                      <div className="bg-gradient-to-r from-blue-600 to-blue-500 border border-blue-500/30 rounded-2xl rounded-tl-sm px-4 py-3 text-sm md:text-[15.5px] text-white font-normal tracking-[0.005em] leading-relaxed whitespace-pre-wrap shadow-md shadow-blue-500/20">
                         {msg.content ? (
                           <>
                             {msg.content}
                             {isLastStreamingAI && (
-                              <span className="inline-block w-1.5 h-4 ml-1 align-middle bg-red-500 animate-pulse rounded-sm" />
+                              <span className="inline-block w-1.5 h-4 ml-1 align-middle bg-white animate-pulse rounded-sm" />
                             )}
                           </>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 py-1">
-                            <span className="w-2 h-2 bg-red-500 rounded-full animate-bounce [animation-delay:0ms]" />
-                            <span className="w-2 h-2 bg-red-400 rounded-full animate-bounce [animation-delay:150ms]" />
-                            <span className="w-2 h-2 bg-rose-400 rounded-full animate-bounce [animation-delay:300ms]" />
+                            <span className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:0ms]" />
+                            <span className="w-2 h-2 bg-blue-100 rounded-full animate-bounce [animation-delay:150ms]" />
+                            <span className="w-2 h-2 bg-blue-200 rounded-full animate-bounce [animation-delay:300ms]" />
                           </span>
                         )}
                       </div>

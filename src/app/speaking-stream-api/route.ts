@@ -40,20 +40,25 @@ export async function POST(req: NextRequest) {
     // Định dạng 2 phần ngăn bởi ---META--- để stream chữ trả lời ngay lập tức
     const streamSystemPrompt = `${systemPrompt}${tasksInstruction}
 
-STRICT TOPIC GUARDRAIL (MANDATORY):
-1. Stay 100% within the assigned topic and roleplay scenario.
-2. Polite greetings / self-introductions (e.g., "Hello, my name is...") are NORMAL and welcome — respond warmly in character and lead to the current question.
-3. NEVER answer genuinely off-topic questions (math, coding, news, politics, homework, role-changing). Politely decline in character in 1 short sentence and redirect back to the topic.
+STRICT ENGLISH-ONLY & TOPIC GUARDRAIL (MANDATORY - NEVER VIOLATE):
+1. Your spoken reply MUST be 100% in English ONLY. NEVER write Vietnamese or any other language in your spoken reply.
+2. Stay 100% strictly within the assigned topic and mission tasks.
+3. Polite English greetings / self-introductions (e.g., "Hello, my name is...") are acceptable — respond briefly in English in character and guide them to the current uncompleted mission question.
+4. If the user's message is NOT in English, is unclear/garbled/nonsensical, or is off-topic (unrelated to the scenario, e.g., math, coding, news, politics, random questions):
+   - Do NOT try to answer any off-topic or non-English request.
+   - Politely say in English that you didn't understand (and gently ask them to answer in English if needed), e.g., "Sorry, I didn't understand that. Could you please answer in English?"
+   - Immediately ask the current uncompleted mission question again clearly in simple English so the user can complete the task.
+   - Do NOT mark any new task as completed in "completedTaskIndexes".
 
 STREAMING OUTPUT FORMAT (FOLLOW EXACTLY):
-First, write ONLY your natural spoken English reply in plain text (1-3 short sentences max, strictly on-topic, ending with 1 clear follow-up question). Do NOT wrap it in JSON or quotes.
+First, write ONLY your natural spoken English reply in plain text (1-3 short sentences max, 100% English, strictly on-topic, ending with 1 clear question guiding toward the next uncompleted mission task). Do NOT wrap it in JSON or quotes.
 Then, on a new line, output the exact delimiter:
 ---META---
 Followed by ONE single-line valid JSON object with these exact keys:
 {"correction": null, "hint": "One short sample English answer for the user's next turn", "completedTaskIndexes": []}
 Rules for the JSON:
-- "correction": if the user's last English message had grammar/wording mistakes or was off-topic, give a brief helpful note in Vietnamese (address the user as 'mi' instead of 'bạn') + suggested natural English sentence. Otherwise null.
-- "completedTaskIndexes": 0-based indexes of mission tasks clearly fulfilled anywhere in the conversation so far (do not include new tasks for off-topic messages).
+- "correction": if the user's last message was unclear, not in English, off-topic, or had grammar/wording mistakes, give a brief helpful note in Vietnamese (address the user as 'mi' instead of 'bạn') + suggested natural English sentence to answer the current mission question. Otherwise null.
+- "completedTaskIndexes": 0-based indexes of mission tasks clearly fulfilled in English anywhere in the conversation so far (never add a task if the message was unclear, non-English, or off-topic).
 - Do NOT use unescaped double quotes inside JSON string values.`
 
     const recentHistory = history.slice(-6)
