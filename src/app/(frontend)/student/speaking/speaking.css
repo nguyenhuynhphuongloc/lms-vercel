@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Reset lại các global style đen từ (frontend)/styles.css */
+.speaking-wrapper {
+  background-color: rgb(249 250 251); /* bg-gray-50 */
+  color: rgb(17 24 39); /* text-gray-900 */
+  min-height: 100vh;
+}
+
+.speaking-wrapper h1,
+.speaking-wrapper h2,
+.speaking-wrapper h3,
+.speaking-wrapper p,
+.speaking-wrapper a {
+  color: inherit;
+  margin: 0;
+  font-size: unset;
+  line-height: unset;
+}
+

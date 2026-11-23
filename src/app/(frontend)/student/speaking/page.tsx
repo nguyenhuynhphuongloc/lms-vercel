@@ -1,113 +1,95 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
-import { transcribeAudio } from './actions'
+import { useState } from 'react'
+import Link from 'next/link'
+import { ArrowRight, Search } from 'lucide-react'
+import { speakingTopics } from './topics'
 
-export default function SpeakingPage() {
-  const [isRecording, setIsRecording] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [transcript, setTranscript] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+export default function SpeakingIndexPage() {
+  const [query, setQuery] = useState('')
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream)
-      mediaRecorderRef.current = mediaRecorder
-      audioChunksRef.current = []
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
-        }
-      }
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-        await handleAudioUpload(audioBlob)
-        
-        // Tắt micro sau khi thu xong
-        stream.getTracks().forEach(track => track.stop())
-      }
-
-      mediaRecorder.start()
-      setIsRecording(true)
-      setError(null)
-    } catch (err) {
-      console.error('Lỗi truy cập micro:', err)
-      setError('Không thể truy cập Micro. Vui lòng cấp quyền trong trình duyệt.')
-    }
-  }
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop()
-      setIsRecording(false)
-    }
-  }
-
-  const handleAudioUpload = async (blob: Blob) => {
-    setLoading(true)
-    setError(null)
-    
-    const formData = new FormData()
-    formData.append('audio', blob)
-
-    const response = await transcribeAudio(formData)
-
-    if (response.error) {
-      setError(response.error)
-    } else if (response.text) {
-      setTranscript(response.text)
-    }
-    
-    setLoading(false)
-  }
+  const filteredTopics = speakingTopics.filter((topic) => {
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    return (
+      topic.title.toLowerCase().includes(q) ||
+      topic.titleVi.toLowerCase().includes(q) ||
+      topic.descriptionVi.toLowerCase().includes(q) ||
+      topic.tags.some((t) => t.toLowerCase().includes(q))
+    )
+  })
 
   return (
-    <div className="container mx-auto p-8 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Luyện tập Nói (Speaking Practice)</h1>
-      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 text-center">
-        <h2 className="text-xl font-semibold mb-6">Nhấn nút bên dưới để bắt đầu thu âm</h2>
-        
-        <div className="flex justify-center items-center space-x-4 mb-8">
-          {!isRecording ? (
-            <button 
-              onClick={startRecording}
-              disabled={loading}
-              className="bg-red-500 text-white w-20 h-20 rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition disabled:opacity-50"
-            >
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-            </button>
-          ) : (
-            <button 
-              onClick={stopRecording}
-              className="bg-gray-800 text-white w-20 h-20 rounded-full flex items-center justify-center shadow-lg animate-pulse"
-            >
-              <div className="w-8 h-8 bg-white rounded-sm"></div>
-            </button>
-          )}
-        </div>
-
-        {isRecording && <p className="text-red-500 font-semibold mb-4 animate-pulse">Đang thu âm...</p>}
-        {loading && <p className="text-blue-500 font-semibold mb-4">Đang dùng AI để phân tích giọng nói...</p>}
-        {error && <p className="text-red-500 mt-2">{error}</p>}
-      </div>
-      
-      {/* Khu vực hiển thị văn bản sau khi nhận diện */}
-      {transcript && (
-        <div className="mt-8 bg-green-50 p-6 rounded-lg border border-green-100">
-          <h3 className="text-lg font-bold text-green-800 mb-4">Văn bản nhận diện được (Transcript):</h3>
-          <div className="text-gray-800 text-lg leading-relaxed bg-white p-4 rounded border">
-            {transcript}
+    <div className="min-h-screen bg-slate-50 text-gray-900">
+      <div className="max-w-6xl mx-auto px-6 py-10">
+        {/* Header */}
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">App luyện nói lộc làm cho mi đẹp gái</h1>
+            <p className="text-gray-500 mt-1 text-sm">
+              lộc hi vọng app này sẽ giúp mi đạt aim nha
+            </p>
           </div>
         </div>
-      )}
+
+        {/* Search bar */}
+        <div className="mb-8 relative max-w-md">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Tìm chủ đề luyện nói..."
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition shadow-sm"
+          />
+        </div>
+
+        {/* Topic Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredTopics.map((topic) => (
+            <Link key={topic.id} href={`/student/speaking/${topic.id}`}>
+              <div className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-red-400 hover:shadow-lg hover:shadow-red-500/5 transition-all cursor-pointer group h-full flex flex-col shadow-sm">
+                {/* Top row */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-xl">
+                      {topic.icon}
+                    </div>
+                    <span className="text-xs font-medium text-red-600">Speaking</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-red-600 group-hover:translate-x-0.5 transition-all" />
+                </div>
+
+                {/* Title */}
+                <h2 className="font-bold text-gray-900 text-base group-hover:text-red-600 transition-colors">
+                  {topic.titleVi}
+                </h2>
+                <p className="text-xs text-gray-400 mb-2.5">{topic.title}</p>
+
+                {/* Description */}
+                <p className="text-sm text-gray-600 leading-relaxed flex-1 line-clamp-3">
+                  {topic.descriptionVi}
+                </p>
+
+                {/* Badges */}
+                <div className="mt-4 pt-3.5 border-t border-gray-100 flex items-center flex-wrap gap-2">
+                  <span className="inline-block text-xs font-semibold bg-red-50 text-red-600 border border-red-200 rounded-full px-2.5 py-0.5">
+                    {topic.level}
+                  </span>
+                  {topic.tags.slice(0, 2).map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-block text-xs bg-gray-100 text-gray-600 border border-gray-200 rounded-full px-2.5 py-0.5"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
