@@ -7,7 +7,7 @@ export async function gradeWriting(text: string) {
 
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) {
-    return { error: 'Thiếu GROQ_API_KEY trong file .env.' }
+    return { error: 'Hệ thống gặp vấn đề' }
   }
 
   const prompt = `
@@ -62,9 +62,6 @@ Bài viết của học viên:
     return { result: resultText }
   } catch (error: any) {
     console.error('Groq API error:', error.message || error)
-    if (error.name === 'AbortError') {
-      return { error: 'Máy chủ AI phản hồi quá chậm (Timeout). Vui lòng thử lại.' }
-    }
-    return { error: 'Đã xảy ra lỗi khi kết nối với máy chủ AI. Vui lòng thử lại sau.' }
+    return { error: 'Hệ thống gặp vấn đề' }
   }
 }

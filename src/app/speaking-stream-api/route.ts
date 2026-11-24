@@ -76,10 +76,7 @@ Rules for the JSON:
     if (provider === 'vietapi') {
       const apiKey = getVietApiKey()
       if (!apiKey) {
-        return Response.json(
-          { error: 'Thiếu VIETAPI_API_KEY (hoặc apikey_vietchatbot) trong file .env.' },
-          { status: 500 },
-        )
+        return Response.json({ error: 'Hệ thống gặp vấn đề' }, { status: 500 })
       }
 
       const customEndpoint = process.env.VIETAPI_BASE_URL?.trim().replace(/\/+$/, '')
@@ -134,7 +131,7 @@ Rules for the JSON:
       // Groq streaming (siêu tốc)
       const apiKey = process.env.GROQ_API_KEY?.trim()
       if (!apiKey) {
-        return Response.json({ error: 'Thiếu GROQ_API_KEY trong file .env.' }, { status: 500 })
+        return Response.json({ error: 'Hệ thống gặp vấn đề' }, { status: 500 })
       }
 
       for (const model of ['openai/gpt-oss-120b', 'openai/gpt-oss-20b']) {
@@ -172,17 +169,7 @@ Rules for the JSON:
     }
 
     if (!upstreamRes || !upstreamRes.body) {
-      let apiMsg = ''
-      try {
-        const parsed = JSON.parse(lastErrText)
-        apiMsg = parsed?.error?.message || parsed?.message || ''
-      } catch {
-        apiMsg = lastErrText.slice(0, 180)
-      }
-      return Response.json(
-        { error: `Lỗi AI (HTTP ${lastStatus})${apiMsg ? `: ${apiMsg}` : ''}` },
-        { status: lastStatus || 500 },
-      )
+      return Response.json({ error: 'Hệ thống gặp vấn đề' }, { status: lastStatus || 500 })
     }
 
     const reader = upstreamRes.body.getReader()
@@ -250,7 +237,7 @@ Rules for the JSON:
       return new Response('', { status: 499 })
     }
     console.error('[speaking-stream-api] Unexpected error:', err)
-    return Response.json({ error: 'Lỗi hệ thống khi kết nối AI.' }, { status: 500 })
+    return Response.json({ error: 'Hệ thống gặp vấn đề' }, { status: 500 })
   }
 }
 

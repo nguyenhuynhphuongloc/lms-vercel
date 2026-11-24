@@ -272,14 +272,7 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
         })
 
         if (!response.ok || !response.body) {
-          let errMsg = `AI không phản hồi (HTTP ${response.status}). Hãy thử lại.`
-          try {
-            const errJson = await response.json()
-            if (errJson?.error) errMsg = errJson.error
-          } catch {
-            // ignore
-          }
-          setError(errMsg)
+          setError('Hệ thống gặp vấn đề')
           setMessages((prev) => prev.filter((m) => m.id !== aiMsgId))
           return
         }
@@ -315,7 +308,7 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
         const finalReply = (metaIdx !== -1 ? fullRaw.slice(0, metaIdx) : fullRaw).trim()
 
         if (!finalReply) {
-          setError('AI không trả về nội dung. Hãy thử lại.')
+          setError('Hệ thống gặp vấn đề')
           setMessages((prev) => prev.filter((m) => m.id !== aiMsgId))
           return
         }
@@ -365,7 +358,7 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
         isSubmittingRef.current = false
         await speak(finalReply, aiMsgId)
       } catch {
-        setError('Lỗi kết nối khi nhận phản hồi từ AI. Hãy thử lại.')
+        setError('Hệ thống gặp vấn đề')
         setMessages((prev) => prev.filter((m) => m.id !== aiMsgId || m.content.trim().length > 0))
       } finally {
         setStreamingMsgId(null)

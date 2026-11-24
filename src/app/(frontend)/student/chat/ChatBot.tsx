@@ -91,14 +91,7 @@ export default function ChatBot() {
       }
 
       if (!response.ok || !response.body) {
-        let errMsg = `Lỗi phản hồi (HTTP ${response.status})`
-        try {
-          const errJson = await response.json()
-          if (errJson?.error) errMsg = errJson.error
-        } catch {
-          // ignore
-        }
-        setError(errMsg)
+        setError('Hệ thống gặp vấn đề')
         // Xóa khung AI rỗng nếu lỗi
         setMessages((prev) => prev.filter((m) => m.id !== aiMsgId))
         setIsStreaming(false)
@@ -123,12 +116,12 @@ export default function ChatBot() {
       }
 
       if (!accumulated.trim()) {
-        setError('AI không trả về nội dung. Vui lòng thử lại.')
+        setError('Hệ thống gặp vấn đề')
         setMessages((prev) => prev.filter((m) => m.id !== aiMsgId))
       }
     } catch (err: any) {
       if (err?.name !== 'AbortError') {
-        setError('Lỗi kết nối khi nhận phản hồi streaming. Vui lòng thử lại.')
+        setError('Hệ thống gặp vấn đề')
         setMessages((prev) => prev.filter((m) => m.id !== aiMsgId || m.content.trim().length > 0))
       }
     } finally {

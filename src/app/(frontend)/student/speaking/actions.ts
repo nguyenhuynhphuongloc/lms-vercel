@@ -36,7 +36,7 @@ async function callVietAPI(params: {
 }): Promise<{ text?: string; error?: string }> {
   const apiKey = getVietApiKey()
   if (!apiKey) {
-    return { error: 'Thiếu apikey_vietchatbot (hoặc APIKEY_VIETCHATBOT) trong file .env' }
+    return { error: 'Hệ thống gặp vấn đề' }
   }
 
   const customBaseUrl = process.env.VIETAPI_BASE_URL?.trim().replace(/\/+$/, '')
@@ -103,23 +103,14 @@ async function callVietAPI(params: {
           if (lastStatus === 404 || lastStatus === 503) {
             break
           }
-          // Lỗi 401/402/403 (sai key/hết tiền) -> dừng luôn để báo rõ
+          // Lỗi 401/402/403 (sai key/hết tiền) -> dừng luôn
           if (lastStatus === 401 || lastStatus === 402 || lastStatus === 403) {
-            let apiMsg = ''
-            try {
-              const parsed = JSON.parse(lastErrorText)
-              apiMsg = parsed?.error?.message || parsed?.message || ''
-            } catch {
-              apiMsg = lastErrorText.slice(0, 160)
-            }
-            return {
-              error: `Lỗi xác thực / số dư VietAPI (HTTP ${lastStatus})${apiMsg ? `: ${apiMsg}` : ''}`,
-            }
+            return { error: 'Hệ thống gặp vấn đề' }
           }
           break
         } catch (err: any) {
           if (err?.name === 'AbortError') {
-            return { error: 'VietAPI phản hồi quá chậm (timeout 25s). Vui lòng thử lại.' }
+            return { error: 'Hệ thống gặp vấn đề' }
           }
           console.error(`[VietAPI ${endpoint} | ${model}] Network error:`, err)
           break
@@ -128,46 +119,13 @@ async function callVietAPI(params: {
     }
   }
 
-  // Nếu báo model_not_found (503/404), tự gọi /models để gợi ý danh sách model khả dụng trong group của key
-  let availableModelsHint = ''
-  if (lastStatus === 503 || lastStatus === 404) {
-    try {
-      const modelsUrl = `${baseUrls[0].replace(/\/chat\/completions$/, '')}/models`
-      const mRes = await fetch(modelsUrl, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      })
-      if (mRes.ok) {
-        const mData = await mRes.json()
-        const ids: string[] = Array.isArray(mData?.data)
-          ? mData.data.map((m: { id?: string }) => m.id).filter(Boolean)
-          : []
-        if (ids.length > 0) {
-          console.log('[VietAPI] Available models:', ids.join(', '))
-          availableModelsHint = ` | Model khả dụng: ${ids.slice(0, 8).join(', ')}`
-        }
-      }
-    } catch {
-      // Bỏ qua nếu không gọi được /models
-    }
-  }
-
-  let apiMessage = ''
-  try {
-    const parsedErr = JSON.parse(lastErrorText)
-    apiMessage = parsedErr?.error?.message || parsedErr?.message || ''
-  } catch {
-    apiMessage = lastErrorText.slice(0, 180)
-  }
-
-  return {
-    error: `Lỗi VietAPI (HTTP ${lastStatus || 'network'})${apiMessage ? `: ${apiMessage}` : ''}${availableModelsHint}`,
-  }
+  return { error: 'Hệ thống gặp vấn đề' }
 }
 
 async function callGeminiAPI(payload: Record<string, unknown>) {
   const apiKey = getGeminiApiKey()
   if (!apiKey) {
-    return { error: 'Thiếu GEMINI_API_KEY trong file .env' }
+    return { error: 'Hệ thống gặp vấn đề' }
   }
 
   const models = ['gemini-2.5-flash', 'gemini-2.0-flash']
@@ -215,37 +173,14 @@ async function callGeminiAPI(payload: Record<string, unknown>) {
       break
     } catch (err: any) {
       if (err?.name === 'AbortError') {
-        return { error: 'Gemini phản hồi quá chậm (timeout). Vui lòng thử lại.' }
+        return { error: 'Hệ thống gặp vấn đề' }
       }
       console.error(`[Gemini ${model}] Network error:`, err)
-      return { error: 'Lỗi kết nối đến Gemini API. Vui lòng thử lại.' }
+      return { error: 'Hệ thống gặp vấn đề' }
     }
   }
 
-  let apiMessage = ''
-  try {
-    const parsedErr = JSON.parse(lastErrorText)
-    apiMessage = parsedErr?.error?.message || ''
-  } catch {
-    apiMessage = lastErrorText.slice(0, 180)
-  }
-
-  if (lastStatus === 401 || lastStatus === 403) {
-    return {
-      error: `GEMINI_API_KEY chưa được cấp quyền (HTTP ${lastStatus})${apiMessage ? `: ${apiMessage}` : ''}`,
-    }
-  }
-  if (lastStatus === 400) {
-    return {
-      error: `Gemini báo lỗi yêu cầu (HTTP 400)${apiMessage ? `: ${apiMessage}` : ''}`,
-    }
-  }
-  if (lastStatus === 429) {
-    return { error: 'Gemini API đang bị giới hạn lượt gọi (429). Đợi vài giây rồi thử lại.' }
-  }
-  return {
-    error: `Lỗi Gemini API (HTTP ${lastStatus || 'unknown'})${apiMessage ? `: ${apiMessage}` : ''}`,
-  }
+  return { error: 'Hệ thống gặp vấn đề' }
 }
 
 export async function transcribeAudio(formData: FormData, provider: AIProvider = 'groq') {
@@ -295,13 +230,12 @@ export async function transcribeAudio(formData: FormData, provider: AIProvider =
       return { text: (res.text || '').trim() }
     } catch (err) {
       console.error('[transcribeAudio Gemini] error:', err)
-      return { error: 'Lỗi xử lý file âm thanh với Gemini.' }
+      return { error: 'Hệ thống gặp vấn đề' }
     }
   }
 
   // Dùng Groq Whisper (chính xác nhất cho phân tích file audio thành text tiếng Anh)
   const groqApiKey = process.env.GROQ_API_KEY?.trim()
-  let lastGroqError = ''
 
   if (groqApiKey) {
     for (const whisperModel of ['whisper-large-v3', 'whisper-large-v3-turbo']) {
@@ -324,29 +258,16 @@ export async function transcribeAudio(formData: FormData, provider: AIProvider =
         }
         const errText = await response.text().catch(() => '')
         console.error(`[transcribeAudio Groq ${whisperModel}] HTTP ${response.status}:`, errText)
-        let msg = ''
-        try {
-          msg = JSON.parse(errText)?.error?.message || ''
-        } catch {
-          msg = errText.slice(0, 140)
-        }
-        lastGroqError = `HTTP ${response.status}${msg ? `: ${msg}` : ''}`
         if (response.status === 429 || response.status === 404 || response.status === 403) continue
         break
       } catch (err) {
         console.error(`[transcribeAudio Groq ${whisperModel}] Network error:`, err)
-        lastGroqError = 'Lỗi kết nối Groq'
         break
       }
     }
   }
 
-  if (!groqApiKey) {
-    return { error: 'Thiếu GROQ_API_KEY trong file .env để phân tích audio.' }
-  }
-  return {
-    error: `Lỗi khi AI phân tích giọng nói (${lastGroqError || 'không rõ nguyên nhân'}). Nếu báo HTTP 403 bị block, hãy bật lại whisper-large-v3-turbo tại console.groq.com/settings/project/limits.`,
-  }
+  return { error: 'Hệ thống gặp vấn đề' }
 }
 
 function parseChatJSON(rawContent: string): ChatAIResult {
@@ -464,9 +385,9 @@ For "completedTaskIndexes", include the 0-based index of any mission tasks that 
     return parseChatJSON(res.text || '')
   }
 
-  // Nhánh Groq API (ưu tiên model nhẹ siêu tốc openai/gpt-oss-20b, dự phòng 120b)
+  // Nhánh Groq API (ưu tiên model nhẹ siêu tốc openai/gpt-oss-120b, dự phòng 20b)
   const apiKey = process.env.GROQ_API_KEY
-  if (!apiKey) return { error: 'Thiếu GROQ_API_KEY trong .env' }
+  if (!apiKey) return { error: 'Hệ thống gặp vấn đề' }
 
   const messages = [
     { role: 'system', content: structuredSystemPrompt },
@@ -515,20 +436,12 @@ For "completedTaskIndexes", include the 0-based index of any mission tasks that 
       }
       break
     } catch (err: any) {
-      if (err.name === 'AbortError')
-        return { error: 'AI phản hồi quá chậm (timeout). Vui lòng thử lại.' }
       console.error(`[chatWithAI] Groq ${groqModel} Network error:`, err)
-      return { error: 'Lỗi kết nối đến AI. Kiểm tra internet hoặc thử lại.' }
+      return { error: 'Hệ thống gặp vấn đề' }
     }
   }
 
-  if (lastStatus === 401)
-    return { error: 'API Key Groq không hợp lệ. Kiểm tra GROQ_API_KEY trong .env.' }
-  if (lastStatus === 429)
-    return { error: 'Groq đang bị quá tải (rate limit). Vui lòng đợi vài giây rồi thử lại.' }
-  if (lastStatus === 503 || lastStatus === 500)
-    return { error: 'Máy chủ Groq đang bảo trì. Thử lại sau ít phút.' }
-  return { error: `Lỗi API (HTTP ${lastStatus || 'unknown'}). Vui lòng thử lại.` }
+  return { error: 'Hệ thống gặp vấn đề' }
 }
 
 export async function translateText(
@@ -572,7 +485,7 @@ export async function translateText(
   }
 
   const apiKey = process.env.GROQ_API_KEY
-  if (!apiKey) return { error: 'Thiếu GROQ_API_KEY trong .env' }
+  if (!apiKey) return { error: 'Hệ thống gặp vấn đề' }
 
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -596,12 +509,12 @@ export async function translateText(
       }),
     })
 
-    if (!response.ok) return { error: 'Không thể dịch lúc này.' }
+    if (!response.ok) return { error: 'Hệ thống gặp vấn đề' }
     const data = await response.json()
     const translation = data.choices?.[0]?.message?.content?.trim()
     return { translation: translation || 'Không có bản dịch.' }
   } catch {
-    return { error: 'Lỗi kết nối khi dịch.' }
+    return { error: 'Hệ thống gặp vấn đề' }
   }
 }
 
@@ -673,7 +586,7 @@ Trả về JSON hợp lệ (không markdown fence) với cấu trúc:
   }
 
   const apiKey = process.env.GROQ_API_KEY
-  if (!apiKey) return { error: 'Thiếu GROQ_API_KEY trong .env' }
+  if (!apiKey) return { error: 'Hệ thống gặp vấn đề' }
 
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -694,12 +607,12 @@ Trả về JSON hợp lệ (không markdown fence) với cấu trúc:
       }),
     })
 
-    if (!response.ok) return { error: 'Không thể tạo nhận xét lúc này.' }
+    if (!response.ok) return { error: 'Hệ thống gặp vấn đề' }
     const data = await response.json()
     const raw: string = data.choices?.[0]?.message?.content || ''
     return parseFeedback(raw)
   } catch {
-    return { error: 'Lỗi kết nối khi tạo nhận xét.' }
+    return { error: 'Hệ thống gặp vấn đề' }
   }
 }
 

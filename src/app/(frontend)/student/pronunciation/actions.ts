@@ -88,7 +88,7 @@ export async function checkPronunciation(formData: FormData): Promise<Pronunciat
     error: msg,
   })
 
-  if (!apiKey) return emptyError('Thiếu GROQ_API_KEY trong file .env.')
+  if (!apiKey) return emptyError('Hệ thống gặp vấn đề')
   if (!targetText) return emptyError('Vui lòng nhập hoặc chọn từ vựng cần kiểm tra.')
   if (!browserSpokenText && (!audioFile || audioFile.size === 0)) {
     return emptyError('Không tìm thấy dữ liệu giọng nói hoặc âm thanh.')
@@ -141,9 +141,7 @@ export async function checkPronunciation(formData: FormData): Promise<Pronunciat
       if (!whisperRes.ok) {
         const errText = await whisperRes.text().catch(() => '')
         console.error(`[checkPronunciation] Whisper HTTP ${whisperRes.status}:`, errText)
-        return emptyError(
-          `Lỗi nhận diện âm thanh (HTTP ${whisperRes.status}). Hãy chuyển sang tab Thu âm trực tiếp (Web Speech API miễn phí) hoặc bật lại Whisper trên Groq.`,
-        )
+        return emptyError('Hệ thống gặp vấn đề')
       }
 
       const whisperData = await whisperRes.json()
@@ -164,7 +162,7 @@ export async function checkPronunciation(formData: FormData): Promise<Pronunciat
       }
     } catch (err) {
       console.error('[checkPronunciation] Whisper error:', err)
-      return emptyError('Lỗi kết nối khi phân tích file âm thanh.')
+      return emptyError('Hệ thống gặp vấn đề')
     }
   }
 
@@ -380,11 +378,7 @@ LƯU Ý QUAN TRỌNG: Không dùng dấu ngoặc kép (") bên trong nội dung 
     return buildFallbackResult()
   } catch (err: any) {
     console.error('[checkPronunciation] Eval error:', err)
-    return emptyError(
-      err?.name === 'AbortError'
-        ? 'AI phân tích quá lâu (timeout). Vui lòng thử lại.'
-        : 'Lỗi khi phân tích phát âm. Vui lòng thử lại.',
-    )
+    return emptyError('Hệ thống gặp vấn đề')
   }
 }
 

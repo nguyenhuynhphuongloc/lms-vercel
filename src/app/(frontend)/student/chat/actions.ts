@@ -24,9 +24,7 @@ export async function sendChatMessage(
 
   const apiKey = getVietApiKey()
   if (!apiKey) {
-    return {
-      error: 'Thiếu VIETAPI_API_KEY (hoặc apikey_vietchatbot) trong file .env.',
-    }
+    return { error: 'Hệ thống gặp vấn đề' }
   }
 
   const model = process.env.VIETAPI_MODEL?.trim() || 'claude-opus-4.6'
@@ -67,32 +65,20 @@ export async function sendChatMessage(
     if (!response.ok) {
       const errText = await response.text().catch(() => '')
       console.error(`[ChatBot ${model}] HTTP ${response.status}:`, errText)
-      let apiMsg = ''
-      try {
-        const parsed = JSON.parse(errText)
-        apiMsg = parsed?.error?.message || parsed?.message || ''
-      } catch {
-        apiMsg = errText.slice(0, 180)
-      }
-      return {
-        error: `Lỗi VietAPI (HTTP ${response.status})${apiMsg ? `: ${apiMsg}` : ''}`,
-      }
+      return { error: 'Hệ thống gặp vấn đề' }
     }
 
     const data = await response.json()
     const reply: string = data?.choices?.[0]?.message?.content?.trim() || ''
 
     if (!reply) {
-      return { error: 'AI không trả về nội dung. Vui lòng thử lại.' }
+      return { error: 'Hệ thống gặp vấn đề' }
     }
 
     return { reply }
   } catch (err: any) {
-    if (err?.name === 'AbortError') {
-      return { error: 'AI phản hồi quá chậm (timeout 30s). Vui lòng thử lại.' }
-    }
     console.error('[ChatBot] Network error:', err)
-    return { error: 'Lỗi kết nối đến VietAPI. Vui lòng kiểm tra mạng và thử lại.' }
+    return { error: 'Hệ thống gặp vấn đề' }
   }
 }
 

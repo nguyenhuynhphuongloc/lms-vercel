@@ -31,10 +31,7 @@ export async function POST(req: NextRequest) {
 
     const apiKey = getVietApiKey()
     if (!apiKey) {
-      return Response.json(
-        { error: 'Thiếu VIETAPI_API_KEY (hoặc apikey_vietchatbot) trong file .env.' },
-        { status: 500 },
-      )
+      return Response.json({ error: 'Hệ thống gặp vấn đề' }, { status: 500 })
     }
 
     const customEndpoint = process.env.VIETAPI_BASE_URL?.trim().replace(/\/+$/, '')
@@ -104,17 +101,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!upstreamRes || !upstreamRes.body) {
-      let apiMsg = ''
-      try {
-        const parsed = JSON.parse(lastErrText)
-        apiMsg = parsed?.error?.message || parsed?.message || ''
-      } catch {
-        apiMsg = lastErrText.slice(0, 180)
-      }
-      return Response.json(
-        { error: `Lỗi VietAPI (HTTP ${lastStatus})${apiMsg ? `: ${apiMsg}` : ''}` },
-        { status: lastStatus || 500 },
-      )
+      return Response.json({ error: 'Hệ thống gặp vấn đề' }, { status: lastStatus || 500 })
     }
 
     // Chuyển luồng SSE từ OpenAI-compatible sang luồng text thuần để client đọc tức thì
@@ -183,7 +170,7 @@ export async function POST(req: NextRequest) {
       return new Response('', { status: 499 })
     }
     console.error('[student-chat-api] Unexpected error:', err)
-    return Response.json({ error: 'Lỗi hệ thống khi kết nối AI.' }, { status: 500 })
+    return Response.json({ error: 'Hệ thống gặp vấn đề' }, { status: 500 })
   }
 }
 
