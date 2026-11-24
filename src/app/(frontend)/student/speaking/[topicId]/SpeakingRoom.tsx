@@ -43,6 +43,7 @@ type SpeakingRoomProps = {
 }
 
 export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
+  const [openingIdx, setOpeningIdx] = useState(0)
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'opening',
@@ -91,6 +92,24 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
+
+  // Chọn ngẫu nhiên 1 câu mở đầu khác nhau mỗi lần vào phòng (chạy phía client để tránh lỗi hydration)
+  useEffect(() => {
+    const variants = topic.openingVariants
+    if (!variants || variants.length <= 1) return
+    const randomIdx = Math.floor(Math.random() * variants.length)
+    const picked = variants[randomIdx]
+    setOpeningIdx(randomIdx)
+    setMessages([
+      {
+        id: `opening-${randomIdx}`,
+        role: 'assistant',
+        content: picked.message,
+        revealedOverride: null,
+      },
+    ])
+    setCurrentHint(picked.hint)
+  }, [topic.id, topic.openingVariants])
 
   // Tự động mở popup kết thúc phiên AI khi tất cả nhiệm vụ đã hoàn thành
   useEffect(() => {
@@ -497,17 +516,26 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
 
   const handleRestart = () => {
     stopSpeaking()
+    const variants = topic.openingVariants
+    let nextIdx = 0
+    if (variants && variants.length > 1) {
+      // Chọn ngẫu nhiên câu mở đầu KHÁC với câu vừa dùng để mỗi lần luyện đều mới mẻ
+      const others = variants.map((_, idx) => idx).filter((idx) => idx !== openingIdx)
+      nextIdx = others[Math.floor(Math.random() * others.length)]
+    }
+    const picked = variants?.[nextIdx]
+    setOpeningIdx(nextIdx)
     setMessages([
       {
         id: `opening-${Date.now()}`,
         role: 'assistant',
-        content: topic.openingMessage,
+        content: picked ? picked.message : topic.openingMessage,
         revealedOverride: null,
       },
     ])
     prevAllTasksDoneRef.current = false
     setCompletedTasks(topic.tasks.map(() => false))
-    setCurrentHint(topic.initialHint)
+    setCurrentHint(picked ? picked.hint : topic.initialHint)
     setError(null)
     setCompletionPopupOpen(false)
     setFeedbackOpen(false)
@@ -1076,14 +1104,6 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
               </div>
 
               <div className="space-y-2.5">
-                <button
-                  type="button"
-                  onClick={handleCompleteAndFeedback}
-                  className="w-full py-2.5 px-4 rounded-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-semibold text-sm shadow-md shadow-red-500/20 transition"
-                >
-                  Xem nhận xét &amp; Chấm điểm từ AI
-                </button>
-
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
@@ -1095,7 +1115,7 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
                   </button>
                   <Link
                     href="/student/speaking"
-                    className="flex items-center justify-center py-2.5 px-3 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium transition"
+                    className="flex items-center justify-center py-2.5 px-3 rounded-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-sm font-semibold shadow-md shadow-red-500/20 transition"
                   >
                     Chủ đề khác
                   </Link>
