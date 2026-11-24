@@ -1082,12 +1082,11 @@ export default function SpeakingRoom({ topic }: SpeakingRoomProps) {
               </span>
 
               <h3 className="text-xl font-bold text-gray-900">
-                Kết thúc phiên luyện nói AI
+                Kết thúc phiên luyện nói
               </h3>
               <p className="text-sm text-gray-600 mt-2 leading-relaxed">
                 Chúc mừng! Mi đã hoàn thành xuất sắc toàn bộ nhiệm vụ của chủ đề{' '}
-                <span className="font-semibold text-gray-900">{topic.titleVi}</span>. Cảm ơn mi đã
-                luyện tập cùng AI!
+                <span className="font-semibold text-gray-900">{topic.titleVi}</span>. Cảm ơn mi!
               </p>
             </div>
 
